@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Reformat SQL Insert to SET syntax</title>
+    <style>
+      io_field {
+        min-height: 3em;
+        min-width: 7em;
+        background-color: #666666;
+      }
+    </style>
+    <script type="text/javascript" src="sqlreformat.js">
+  </head>
+  <body>
+    <h2>Write SQL-Insert-Statement here:</h2>
+    <textarea class='io_field io_in' onkeyup='onkey_reformat_sqlinsert(this)'>INSERT INTO `asd` (`a,a,a,a,a`, `b`, `c`) VALUES ('1,1,1','2','3');</textarea>
+
+    <h2>Result:</h2>
+    <div class='io_field io_out'></div>
+
+    <div>
+      <h3>
+      Testdata:
+      </h3>
+      <p>INSERT INTO `asd` (a, b, c) VALUES (1,2,3);</p>
+      INSERT INTO `asd` (`a,a,a,a,a`, `b`, `c`) VALUES ('1,1,1','2','3');
+      <p>INSERT INTO `asd` (a, `b,b,b`, c) VALUES (1,'2,2,2,2,2',3);</p>
+      <p>INSERT INTO asdasdasd SET a = 1, b = 2, c = 3;</p>
+    </div>
+  </body>
+</html>
