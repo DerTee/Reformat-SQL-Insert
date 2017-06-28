@@ -50,26 +50,63 @@ function extract_sqlfields_from_string(raw_sqlfields, field_delimiter) {
     'raw_sqlfields': raw_sqlfields,
     'field_delimiter': field_delimiter,
     'field_seperator': ',',
+    'char_escape': '\\',
     'position': 0,
     'mode': MODE_LOOKING_FOR_FIELD,
     'char_cur': '',
-    'char_prev': ''
+    'char_prev': '',
+    'read_field': function() {
+      var field;
+      if(this.char_cur === this.field_delimiter) {
+        var position_start = this.position;
+        while(this.position < this.raw_sqlfields.length) {
+          this.char_cur = raw_sqlfields.charAt(this.position);
+
+          // this should handle escape characters pretty well
+          if(this.char_cur === this.char_escape) {
+            this.char_prev = raw_sqlfields.charAt(this.position+1);
+            this.position++;
+            continue;
+          }
+
+          if(this.char_cur === this.field_delimiter) {
+            field = this.raw_sqlfields.slice(position_start, this.position);
+          }
+
+          this.postion++;
+        }
+      } else {
+        var remaining_string = this.raw_sqlfields.slice(this.position);
+        field = remaining_string.match(/\w+/);
+      }
+      return field;
+    }
   };
 	var fields = [];
   var length = raw_sqlfields.length;
   
-  for (search.pos = 0; search.pos < length; search.pos++) {
-    search.char_cur = raw_sqlfields.charAt(search.pos);
+  for (search.position = 0; search.position < length; search.position++) {
+    search.char_cur = raw_sqlfields.charAt(search.position);
+
+    // this should handle escape characters pretty well
+    if(search.char_cur === search.char_escape) {
+      search.char_prev = raw_sqlfields.charAt(search.position+1);
+      search.position++;
+      continue;
+    }
 
     if (search.mode === MODE_LOOKING_FOR_FIELD_SEPERATOR) {
       if(search.char_cur === search.field_seperator) {
-        return;
-      }
+        search.mode = MODE_LOOKING_FOR_FIELD;
+      } //ToDo: Errors for else cases, basically only whitespace is allowed
+
     } else if (search.mode === MODE_LOOKING_FOR_FIELD) {
     	if(search.char_cur.match(/[^\s\n,]/)) {
-      	var field = read_field(raw_sqlfields, search);
+      	var field = search.read_field();
       	fields.push(field);
       	search.mode = MODE_LOOKING_FOR_FIELD_SEPERATOR;
+      } else {
+        throw new Error('Expected either an alphanumeric string or an escaped string to be used as SQL field or value! Got unexpected character \''+search.char_cur+'\'');
       }
     } else {
     	throw new Error('Unknown parsing search.mode "'+search.mode+'"!');
@@ -100,8 +137,4 @@ function check_field_delimiter(field_delimiter) {
     throw new Error("Expected argument field_delimiter to be of type 'string' and to be"+
       " exactly one character long! Got type '"+field_delimiter.type+"' Variable contains: "+field_delimiter);
   }
-}
-
-function read_field() {
-	return '';
 }
