@@ -1,3 +1,5 @@
+"use strict";
+
 function onkey_reformat_sqlinsert(elInput) {
 	var elOutput = elInput.parentElement.querySelector('.io_out');
 	reformat_sqlinsert_from_element_to_element(elInput, elOutput);
@@ -26,7 +28,8 @@ function reformat_sqlinsert(sqlinsert) {
   console.log('values:');
   console.log(values);
   console.log('---------------------');
-  if(fields.length != values.length) { throw "Error! Not the same number of fields and values!"; }
+  check_fields_and_values(fields, values);
+  
   var field_value_pairs = [];
   var num_pairs = fields.length;
   for(var i=0; i<num_pairs; i++) {
@@ -37,40 +40,66 @@ function reformat_sqlinsert(sqlinsert) {
   
 }
 
-function extract_sqlfields_from_string(raw_sqlfields, char_optional_field_marker) {
-  if (typeof raw_sqlfields !== 'string') {
-  	throw new Error("Expected argument raw_sqlfields to be of type 'string'! Got type '"+raw_sqlfields.type+"' Variable contains: "+raw_sqlfields);
-  }
-  if (typeof char_optional_field_escape !== 'string' || char_optional_field_escape.length !== 1) {
-  	throw new Error("Expected argument char_optional_field_escape to be of type 'string' and to be exactly one character long! Got type '"+raw_sqlfields.type+"' Variable contains: "+raw_sqlfields);
-  }
-  const STATUS_LOOKING_FOR_FIELD = 0;
-  const STATUS_LOOKING_FOR_FIELD_SEPERATOR = 1;
-  var status = STATUS_LOOKING_FOR_FIELD;
+function extract_sqlfields_from_string(raw_sqlfields, field_delimiter) {
+  check_raw_sqlfields(raw_sqlfields);
+  check_field_delimiter(field_delimiter);
+
+  var MODE_LOOKING_FOR_FIELD = 0;
+  var MODE_LOOKING_FOR_FIELD_SEPERATOR = 1;
+  var search = {
+    'raw_sqlfields': raw_sqlfields,
+    'field_delimiter': field_delimiter,
+    'field_seperator': ',',
+    'position': 0,
+    'mode': MODE_LOOKING_FOR_FIELD,
+    'char_cur': '',
+    'char_prev': ''
+  };
 	var fields = [];
-  var field_seperator = ',';
-  var field_uses_delimiter = false;
-  var char_prev = '';
-  var char_cur = '';
   var length = raw_sqlfields.length;
   
-  for (var i = 0; i < length; i++) {
-    char_cur = raw_sqlfields.charAt(i);
+  for (search.pos = 0; search.pos < length; search.pos++) {
+    search.char_cur = raw_sqlfields.charAt(search.pos);
 
-    if (status === STATUS_LOOKING_FOR_FIELD_SEPERATOR) {
-      if(char_cur === )
-    } else if (status === STATUS_LOOKING_FOR_FIELD) {
-    	if(char_cur.match(/[^\s\n,]/)) {
-      	var field = read_field(raw_sqlfields, i, , field_uses_delimiter);
+    if (search.mode === MODE_LOOKING_FOR_FIELD_SEPERATOR) {
+      if(search.char_cur === search.field_seperator) {
+        return;
+      }
+    } else if (search.mode === MODE_LOOKING_FOR_FIELD) {
+    	if(search.char_cur.match(/[^\s\n,]/)) {
+      	var field = read_field(raw_sqlfields, search);
       	fields.push(field);
-      	status = STATUS_LOOKING_FOR_FIELD_SEPERATOR;
+      	search.mode = MODE_LOOKING_FOR_FIELD_SEPERATOR;
       }
     } else {
-    	throw new Error('Unknown parsing status "'+status+'"!');
+    	throw new Error('Unknown parsing search.mode "'+search.mode+'"!');
     }
-    char_prev = char_cur;
+    search.char_prev = search.char_cur;
   }
 	return fields;
+}
+
+function check_fields_and_values(fields, values) {
+  if(typeof fields !== 'object' || typeof values !== 'object') {
+    throw new Error('Fields and values must be arrays! Got type for fields:"'+typeof fields+'", values:"'+typeof values+'" ');
+  }
+  if(fields.length != values.length) {
+    throw new Error('Error! Not the same number of fields and values!');
+  }
+}
+
+function check_raw_sqlfields(raw_sqlfields) {
+  if (typeof raw_sqlfields !== 'string') {
+  throw new Error("Expected argument raw_sqlfields to be of type 'string'! Got type '"+
+    raw_sqlfields.type+"' Variable contains: "+raw_sqlfields);
+  }
+}
+
+function check_field_delimiter(field_delimiter) {
+  if (typeof field_delimiter !== 'string' || field_delimiter.length !== 1) {
+    throw new Error("Expected argument field_delimiter to be of type 'string' and to be"+
+      " exactly one character long! Got type '"+field_delimiter.type+"' Variable contains: "+field_delimiter);
+  }
 }
 
 function read_field() {
