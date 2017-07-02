@@ -21,13 +21,8 @@ function reformat_sqlinsert(sqlinsert) {
   var raw_fields = matches[1];
   var raw_values = matches[2];
   var fields = extract_sqlfields_from_string(raw_fields, '`');
-  console.log('fields:');
-  console.log(fields);
   
   var values = extract_sqlfields_from_string(raw_values, "'");
-  console.log('values:');
-  console.log(values);
-  console.log('---------------------');
   check_fields_and_values(fields, values);
   
   var field_value_pairs = [];
