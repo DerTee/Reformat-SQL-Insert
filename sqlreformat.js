@@ -1,5 +1,60 @@
 "use strict";
 
+var search_prototype = {
+  'init': function(raw_sqlfields, field_delimiter, field_seperator, char_escape) {
+    this.raw_sqlfields =  raw_sqlfields;
+    this.field_delimiter =  field_delimiter;
+    this.field_seperator =  field_seperator;
+    this.char_escape =  char_escape;
+    this.position =  0;
+    this.mode =  0;
+    this.char_cur =  '';
+    this.char_prev =  '';
+  },
+  'read_field': function() {
+    if(this.char_cur === this.field_delimiter) {
+      return this.read_delimited_field();
+    } else {
+      return this.read_undelimited_field();
+    }
+  },
+  'read_delimited_field': function() {
+    this.position++;  //ToDo: Find cleaner way to do this
+    var field = '';
+
+    while(this.position < this.raw_sqlfields.length) {
+      this.char_cur = this.raw_sqlfields.charAt(this.position);
+
+      // this should handle escape characters pretty well
+      if(this.char_cur === this.char_escape) {
+        var char_escaped = this.raw_sqlfields.charAt(this.position+1);
+        field += char_escaped;
+        this.char_prev = char_escaped;
+        this.position++;
+        continue;
+      }
+
+      if(this.char_cur === this.field_delimiter) {
+        this.position++;
+        return field;
+      }
+
+      field += this.char_cur;
+      this.position++;
+    }
+  },
+  'read_undelimited_field': function() {
+    var remaining_string = this.raw_sqlfields.slice(this.position);
+    var match = remaining_string.match(/^\w+/);
+    if(!match || !match[0]) {
+      throw new Error('Expected unescaped sql value / field, but did not get a usable match in string "'+remaining_string+'"!');
+    }
+    var field = match[0];
+    this.position = this.position + match.index + match[0].length -1;
+    return field;
+  }
+};
+
 function onkey_reformat_sqlinsert(elInput) {
 	var elOutput = elInput.parentElement.querySelector('.io_out');
 	reformat_sqlinsert_from_element_to_element(elInput, elOutput);
@@ -28,7 +83,7 @@ function reformat_sqlinsert(sqlinsert) {
   var field_value_pairs = [];
   var num_pairs = fields.length;
   for(var i=0; i<num_pairs; i++) {
-    field_value_pairs.push(fields[i]+'='+values[i]);
+    field_value_pairs.push('`'+fields[i]+'`'+'='+'\''+values[i]+'\'');
   }
 
   return 'INSERT INTO '+raw_table+' SET '+field_value_pairs.join(", ")+';';
@@ -41,43 +96,11 @@ function extract_sqlfields_from_string(raw_sqlfields, field_delimiter) {
 
   var MODE_LOOKING_FOR_FIELD = 0;
   var MODE_LOOKING_FOR_FIELD_SEPERATOR = 1;
-  var search = {
-    'raw_sqlfields': raw_sqlfields,
-    'field_delimiter': field_delimiter,
-    'field_seperator': ',',
-    'char_escape': '\\',
-    'position': 0,
-    'mode': MODE_LOOKING_FOR_FIELD,
-    'char_cur': '',
-    'char_prev': '',
-    'read_field': function() {
-      var field;
-      if(this.char_cur === this.field_delimiter) {
-        var position_start = this.position;
-        while(this.position < this.raw_sqlfields.length) {
-          this.char_cur = raw_sqlfields.charAt(this.position);
+  var search = {};
+  search.__proto__ = search_prototype;
+  search.init(raw_sqlfields, field_delimiter, ',', '\\');
 
-          // this should handle escape characters pretty well
-          if(this.char_cur === this.char_escape) {
-            this.char_prev = raw_sqlfields.charAt(this.position+1);
-            this.position++;
-            continue;
-          }
-
-          if(this.char_cur === this.field_delimiter) {
-            field = this.raw_sqlfields.slice(position_start, this.position);
-          }
-
-          this.postion++;
-        }
-      } else {
-        var remaining_string = this.raw_sqlfields.slice(this.position);
-        field = remaining_string.match(/\w+/);
-      }
-      return field;
-    }
-  };
-	var fields = [];
+  var fields = [];
   var length = raw_sqlfields.length;
   
   for (search.position = 0; search.position < length; search.position++) {
@@ -100,9 +123,11 @@ function extract_sqlfields_from_string(raw_sqlfields, field_delimiter) {
       	var field = search.read_field();
       	fields.push(field);
       	search.mode = MODE_LOOKING_FOR_FIELD_SEPERATOR;
-      } else {
-        throw new Error('Expected either an alphanumeric string or an escaped string to be used as SQL field or value! Got unexpected character \''+search.char_cur+'\'');
       }
+      // else {
+      //   throw new Error('Expected either an alphanumeric string or an escaped string to be used as SQL field or value! Got unexpected character \''+search.char_cur+'\'');
+      // }
+      
     } else {
     	throw new Error('Unknown parsing search.mode "'+search.mode+'"!');
     }
