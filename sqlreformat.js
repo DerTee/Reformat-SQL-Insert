@@ -28,7 +28,7 @@ var search_prototype = {
       // this should handle escape characters pretty well
       if(this.char_cur === this.char_escape) {
         var char_escaped = this.raw_sqlfields.charAt(this.position+1);
-        field += char_escaped;
+        field = field + this.char_cur + char_escaped;
         this.char_prev = char_escaped;
         this.position += 2;
         continue;

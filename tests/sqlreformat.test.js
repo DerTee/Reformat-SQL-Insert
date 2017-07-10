@@ -24,7 +24,7 @@ QUnit.test("read delimited field with escaped delimiters", function(assert) {
   search.init("`field with a \\`shitload\\` of trouble`       trailing garbage", "`", ",", "\\");
   assert.equal(
     search.read_delimited_field(),
-    "field with a \`shitload\` of trouble");
+    "field with a \\`shitload\\` of trouble");
 });
 
 QUnit.test("check position after reading undelimited field", function(assert) {
@@ -66,7 +66,7 @@ QUnit.test( "extract_sqlfields_from_string with delimited fields", function( ass
     extract_sqlfields_from_string(
       "'nobody', 'knows', 'the', 'trouble', 'I\\'ve', 'seen'",
       '\''),
-  ['nobody', 'knows', 'the', 'trouble', 'I\'ve', 'seen']
+  ['nobody', 'knows', 'the', 'trouble', 'I\\\'ve', 'seen']
   );
 });
 
@@ -75,7 +75,7 @@ QUnit.test( "extract_sqlfields_from_string with some delimited and some undelimi
     extract_sqlfields_from_string(
       "nobody, 'knows', the, 'trouble', 'I\\'ve', 'seen in my day, Johnny!'",
       '\''),
-  ['nobody', 'knows', 'the', 'trouble', 'I\'ve', 'seen in my day, Johnny!']
+  ['nobody', 'knows', 'the', 'trouble', 'I\\\'ve', 'seen in my day, Johnny!']
   );
 });
 
