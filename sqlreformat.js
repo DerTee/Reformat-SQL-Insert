@@ -85,7 +85,8 @@ function reformat_sqlinsert(sqlinsert) {
 }
 
 function split_sqlinsert(sqlinsert) {
-  var matches = /INSERT(?:\s|\n)+INTO(?:\s|\n)+(`[a-z0-9_]+`|\w+)(?:\s|\n)+\(([\s\S]+)\)(?:\s|\n)*VALUES(?:\s|\n)*\(([\s\S]+)\)/i.exec(sqlinsert);
+  // NOT BULLETPROOF! But good enough for most real-world use cases. You can break it with SQL-Statements in column names
+  var matches = /INSERT(?:\s|\n)+INTO(?:\s|\n)+(`[a-z0-9_]+`|\w+)(?:\s|\n)+\(([\s\S]+?)\)(?:\s|\n)*VALUES(?:\s|\n)*\(([\s\S]+)\)/i.exec(sqlinsert);
   if(matches === null) {
     throw new Error('RegExp for splitting the raw sql insert did not produce any matches! The raw input:\n'+sqlinsert);
   }

@@ -25,6 +25,12 @@ QUnit.test("read delimited field with escaped delimiters", function(assert) {
   assert.equal(
     search.read_delimited_field(),
     "field with a \\`shitload\\` of trouble");
+
+  var value_string_containing_sql_statement = "'hard: INSERT INTO `asd` (`a,a,a,a,a`, `b`) VALUES (\\'1,1,1\\', \\'b-field-value\\');', 'other value'";
+  search.init(value_string_containing_sql_statement, "'", ",", "\\");
+  assert.equal(
+    search.read_delimited_field(),
+    "hard: INSERT INTO `asd` (`a,a,a,a,a`, `b`) VALUES (\\'1,1,1\\', \\'b-field-value\\');");
 });
 
 QUnit.test("check position after reading undelimited field", function(assert) {
@@ -100,6 +106,16 @@ QUnit.test("split_sqlinsert with line breaks", function( assert ) {
       'table': 'testtable',
       'fields': '\nfield1,\nfield2,\nfield3',
       'values': 'value1,\n value2,\n value3\n'
+    }
+  );
+
+  assert.deepEqual(
+    split_sqlinsert(
+      "INSERT INTO `asd` (`a,a,a,a,a`, `b`, `c`, `sqlstring`) VALUES ('1,1,1','2','3', 'INSERT INTO `asd` (a, `b`, c) VALUES (\\'1\\',\\'2\\', \\'3\\');');"),
+    {
+      'table': '`asd`',
+      'fields': '`a,a,a,a,a`, `b`, `c`, `sqlstring`',
+      'values': "'1,1,1','2','3', 'INSERT INTO `asd` (a, `b`, c) VALUES (\\'1\\',\\'2\\', \\'3\\');'"
     }
   );
 });
