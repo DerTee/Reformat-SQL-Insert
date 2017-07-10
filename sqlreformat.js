@@ -30,7 +30,7 @@ var search_prototype = {
         var char_escaped = this.raw_sqlfields.charAt(this.position+1);
         field += char_escaped;
         this.char_prev = char_escaped;
-        this.position++;
+        this.position += 2;
         continue;
       }
 
