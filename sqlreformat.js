@@ -19,7 +19,7 @@ var search_prototype = {
     }
   },
   'read_delimited_field': function() {
-    this.position++;  //ToDo: Find cleaner way to do this
+    this.position++;  //ToDo: Find cleaner way to skip the first delimiter
     var field = '';
 
     while(this.position < this.raw_sqlfields.length) {
@@ -35,7 +35,6 @@ var search_prototype = {
       }
 
       if(this.char_cur === this.field_delimiter) {
-        this.position++;
         return field;
       }
 
@@ -50,7 +49,7 @@ var search_prototype = {
       throw new Error('Expected unescaped sql value / field, but did not get a usable match in string "'+remaining_string+'"!');
     }
     var field = match[0];
-    this.position = this.position + match.index + match[0].length -1;
+    this.position = this.position + match.index + match[0].length - 1;
     return field;
   }
 };
@@ -67,14 +66,10 @@ function reformat_sqlinsert_from_element_to_element(elInput, elOutput) {
 }
 
 function reformat_sqlinsert(sqlinsert) {
-	if(!sqlinsert.toUpperCase().startsWith('INSERT INTO ')) {
-    return "no result";
-  }
-  
-  var matches = /INSERT\s+INTO\s+(`[a-z0-9_]+`|\w+)\s+\((.*)\)\s+VALUES\s\((.*)\)/i.exec(sqlinsert).slice(1);
-  var raw_table = matches[0];
-  var raw_fields = matches[1];
-  var raw_values = matches[2];
+  var raw_sql_pieces = split_sqlinsert(sqlinsert);
+  var raw_table = raw_sql_pieces.table;
+  var raw_fields = raw_sql_pieces.fields;
+  var raw_values = raw_sql_pieces.values;
   var fields = extract_sqlfields_from_string(raw_fields, '`');
   
   var values = extract_sqlfields_from_string(raw_values, "'");
@@ -87,7 +82,18 @@ function reformat_sqlinsert(sqlinsert) {
   }
 
   return 'INSERT INTO '+raw_table+' SET '+field_value_pairs.join(", ")+';';
-  
+}
+
+function split_sqlinsert(sqlinsert) {
+  var matches = /INSERT(?:\s|\n)+INTO(?:\s|\n)+(`[a-z0-9_]+`|\w+)(?:\s|\n)+\(([\s\S]+)\)(?:\s|\n)*VALUES(?:\s|\n)*\(([\s\S]+)\)/i.exec(sqlinsert);
+  if(matches === null) {
+    throw new Error('RegExp for splitting the raw sql insert did not produce any matches! The raw input:\n'+sqlinsert);
+  }
+  return {
+    'table': matches[1],
+    'fields': matches[2],
+    'values': matches[3]
+  };
 }
 
 function extract_sqlfields_from_string(raw_sqlfields, field_delimiter) {
@@ -103,35 +109,25 @@ function extract_sqlfields_from_string(raw_sqlfields, field_delimiter) {
   var fields = [];
   var length = raw_sqlfields.length;
   
-  for (search.position = 0; search.position < length; search.position++) {
+  search.position = 0;
+  while(search.position < length) {
     search.char_cur = raw_sqlfields.charAt(search.position);
-
-    // this should handle escape characters pretty well
-    if(search.char_cur === search.char_escape) {
-      search.char_prev = raw_sqlfields.charAt(search.position+1);
-      search.position++;
-      continue;
-    }
 
     if (search.mode === MODE_LOOKING_FOR_FIELD_SEPERATOR) {
       if(search.char_cur === search.field_seperator) {
         search.mode = MODE_LOOKING_FOR_FIELD;
       } //ToDo: Errors for else cases, basically only whitespace is allowed
-
     } else if (search.mode === MODE_LOOKING_FOR_FIELD) {
-    	if(search.char_cur.match(/[^\s\n,]/)) {
+      if(search.char_cur.match(/[^\s\n,]/)) {
       	var field = search.read_field();
       	fields.push(field);
       	search.mode = MODE_LOOKING_FOR_FIELD_SEPERATOR;
       }
-      // else {
-      //   throw new Error('Expected either an alphanumeric string or an escaped string to be used as SQL field or value! Got unexpected character \''+search.char_cur+'\'');
-      // }
-      
     } else {
     	throw new Error('Unknown parsing search.mode "'+search.mode+'"!');
     }
     search.char_prev = search.char_cur;
+    search.position++;
   }
 	return fields;
 }
